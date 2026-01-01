@@ -1,3 +1,4 @@
+
 // Views/GearDialView.swift
 import SwiftUI
 import Combine
@@ -64,7 +65,7 @@ struct GearDialView: View {
     private let metalHighlightColor = Color(red: 0.9, green: 0.9, blue: 0.95)
     private let metalShadowColor = Color(red: 0.4, green: 0.4, blue: 0.45)
     private let gearTeethColor = Color(red: 1.0, green: 0.4, blue: 0.2)
-    private let darkGrayRingColor = Color(red: 0.15, green: 0.15, blue: 0.2)
+    private let darkGrayRingColor = Color(red: 0.25, green: 0.25, blue: 0.3)  // 修改：灰色更浅
     private let whiteTickColor = Color.white
     private let whiteTickColorDim = Color.white.opacity(0.7)
     
@@ -88,7 +89,7 @@ struct GearDialView: View {
             .frame(width: size, height: size)
             .clipShape(Circle())
             
-            // 2. 齿轮外和最外圈边界之间的深灰色填充环
+            // 2. 齿轮外和最外圈边界之间的灰色填充环 - 颜色更浅
             Circle()
                 .fill(darkGrayRingColor)
                 .frame(width: size - 16, height: size - 16)  // 比外圈稍小
