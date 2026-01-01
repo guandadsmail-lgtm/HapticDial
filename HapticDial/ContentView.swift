@@ -3,6 +3,8 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = DialViewModel()
+    @StateObject private var bubbleViewModel = BubbleDialViewModel()
+    @StateObject private var gearViewModel = GearDialViewModel()
     @State private var showSettings = false
     
     var body: some View {
@@ -23,46 +25,142 @@ struct ContentView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // 标题
-                    Text("HAPTIC DIAL")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundColor(.white.opacity(0.6))
-                        .tracking(2)
-                        .padding(.top, verticalPadding)
-                    
-                    Spacer()
-                    
-                    // 模式名称和图标
-                    HStack(spacing: 8) {
-                        Image(systemName: viewModel.currentMode == .ratchet ? "gear" : "camera.aperture")
-                            .font(.system(size: 18))
-                            .foregroundColor(.white.opacity(0.9))
+                if isLandscape {
+                    // 横屏布局：主转盘在中间，小转盘在两侧
+                    HStack(spacing: 20) {
+                        // 左侧：气泡转盘
+                        VStack {
+                            BubbleDialViewWrapper(viewModel: bubbleViewModel)
+                                .padding(.bottom, 8)
+                            
+                            Text("BUBBLE")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(1)
+                        }
                         
-                        Text(viewModel.currentMode.displayName)
-                            .font(.system(size: 24, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
+                        Spacer()
+                        
+                        // 主转盘区域
+                        VStack(spacing: 0) {
+                            // 标题
+                            Text("HAPTIC DIAL")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.6))
+                                .tracking(2)
+                                .padding(.top, verticalPadding)
+                            
+                            Spacer()
+                            
+                            // 模式名称和图标
+                            HStack(spacing: 8) {
+                                Image(systemName: viewModel.currentMode == .ratchet ? "gear" : "camera.aperture")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.white.opacity(0.9))
+                                
+                                Text(viewModel.currentMode.displayName)
+                                    .font(.system(size: 24, weight: .medium, design: .rounded))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.bottom, 25)
+                            
+                            // 主转盘
+                            DialViewRedesigned(viewModel: viewModel)
+                                .padding(.vertical, 10)
+                            
+                            Spacer(minLength: 10)
+                            
+                            // 模式描述
+                            Text(viewModel.currentMode == .ratchet ? "Mechanical click every 12°" : "Smooth detent every 22.5°")
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .padding(.top, 20)
+                            
+                            Spacer(minLength: 15)
+                            
+                            // 模式选择器
+                            ModeSelector(selectedMode: $viewModel.currentMode)
+                                .padding(.horizontal, 40)
+                                .padding(.bottom, 30)
+                        }
+                        
+                        Spacer()
+                        
+                        // 右侧：齿轮转盘
+                        VStack {
+                            GearDialViewWrapper(viewModel: gearViewModel)
+                                .padding(.bottom, 8)
+                            
+                            Text("GEAR")
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundColor(.white.opacity(0.5))
+                                .tracking(1)
+                        }
                     }
-                    .padding(.bottom, isLandscape ? 25 : 40)
-                    
-                    // 使用重新设计的转盘
-                    DialViewRedesigned(viewModel: viewModel)
-                        .padding(.vertical, 10)
-                    
-                    Spacer(minLength: isLandscape ? 10 : 20)
-                    
-                    // 模式描述 - 大幅增加与转盘的间距
-                    Text(viewModel.currentMode == .ratchet ? "Mechanical click every 12°" : "Smooth detent every 22.5°")
-                        .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundColor(.white.opacity(0.5))
-                        .padding(.top, isLandscape ? 20 : 60)  // 横屏时减少间距，竖屏时大幅增加
-                    
-                    Spacer(minLength: isLandscape ? 5 : 15)
-                    
-                    // 模式选择器
-                    ModeSelector(selectedMode: $viewModel.currentMode)
-                        .padding(.horizontal, 40)
-                        .padding(.bottom, isLandscape ? 20 : 40)
+                    .padding(.horizontal, 30)
+                } else {
+                    // 竖屏布局：主转盘在上方，小转盘在下方
+                    VStack(spacing: 0) {
+                        // 标题
+                        Text("HAPTIC DIAL")
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.6))
+                            .tracking(2)
+                            .padding(.top, verticalPadding)
+                        
+                        Spacer()
+                        
+                        // 模式名称和图标
+                        HStack(spacing: 8) {
+                            Image(systemName: viewModel.currentMode == .ratchet ? "gear" : "camera.aperture")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white.opacity(0.9))
+                            
+                            Text(viewModel.currentMode.displayName)
+                                .font(.system(size: 24, weight: .medium, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.bottom, 40)
+                        
+                        // 主转盘
+                        DialViewRedesigned(viewModel: viewModel)
+                            .padding(.vertical, 10)
+                        
+                        Spacer(minLength: 20)
+                        
+                        // 模式描述
+                        Text(viewModel.currentMode == .ratchet ? "Mechanical click every 12°" : "Smooth detent every 22.5°")
+                            .font(.system(size: 13, weight: .regular, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.top, 60)
+                        
+                        Spacer()
+                        
+                        // 小转盘区域
+                        HStack(spacing: 40) {
+                            VStack(spacing: 8) {
+                                BubbleDialViewWrapper(viewModel: bubbleViewModel)
+                                Text("BUBBLE")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .tracking(1)
+                            }
+                            
+                            VStack(spacing: 8) {
+                                GearDialViewWrapper(viewModel: gearViewModel)
+                                Text("GEAR")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.5))
+                                    .tracking(1)
+                            }
+                        }
+                        .padding(.bottom, 40)
+                        
+                        // 模式选择器
+                        ModeSelector(selectedMode: $viewModel.currentMode)
+                            .padding(.horizontal, 40)
+                            .padding(.bottom, 30)
+                    }
                 }
                 
                 // 设置按钮
@@ -91,9 +189,34 @@ struct ContentView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(viewModel: viewModel)
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
+            SettingsView(
+                viewModel: viewModel,
+                bubbleViewModel: bubbleViewModel,
+                gearViewModel: gearViewModel
+            )
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
+        }
+    }
+}
+
+// 包装器视图，用于传递ViewModel
+struct BubbleDialViewWrapper: View {
+    @ObservedObject var viewModel: BubbleDialViewModel
+    
+    var body: some View {
+        ZStack {
+            BubbleDialView(viewModel: viewModel)
+        }
+    }
+}
+
+struct GearDialViewWrapper: View {
+    @ObservedObject var viewModel: GearDialViewModel
+    
+    var body: some View {
+        ZStack {
+            GearDialView(viewModel: viewModel)
         }
     }
 }

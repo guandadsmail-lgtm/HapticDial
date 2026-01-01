@@ -1,15 +1,19 @@
 // Views/SettingsView.swift
 import SwiftUI
-import CoreGraphics
+import Combine  // 添加这行
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @ObservedObject var viewModel: DialViewModel
+    @ObservedObject var bubbleViewModel: BubbleDialViewModel
+    @ObservedObject var gearViewModel: GearDialViewModel
     @ObservedObject private var hapticManager = HapticManager.shared
     @State private var hapticIntensity: Float = 0.7
     
-    // 橙粉色
+    // 颜色定义
     private let orangePinkColor = Color(red: 1.0, green: 0.4, blue: 0.3)
+    private let bubbleColor = Color(red: 0.2, green: 0.8, blue: 1.0)
+    private let gearColor = Color(red: 1.0, green: 0.4, blue: 0.2)
     
     var body: some View {
         NavigationView {
@@ -24,14 +28,30 @@ struct SettingsView: View {
                 
                 Section {
                     HStack {
-                        Text("Rotation Count")
+                        Text("Main Dial Rotation")
                         Spacer()
                         Text("\(Int(viewModel.totalRotation / 360)) rotations")
                             .foregroundColor(.secondary)
                     }
                     
-                    Button("Reset Statistics") {
+                    HStack {
+                        Text("Bubble Taps")
+                        Spacer()
+                        Text("\(bubbleViewModel.tapCount)")
+                            .foregroundColor(bubbleColor)
+                    }
+                    
+                    HStack {
+                        Text("Gear Spins")
+                        Spacer()
+                        Text("\(gearViewModel.spinCount)")
+                            .foregroundColor(gearColor)
+                    }
+                    
+                    Button("Reset All Statistics") {
                         viewModel.resetStats()
+                        bubbleViewModel.resetCount()
+                        gearViewModel.resetCount()
                     }
                     .foregroundColor(orangePinkColor)
                 } header: {

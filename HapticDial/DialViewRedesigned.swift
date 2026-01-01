@@ -238,7 +238,7 @@ struct FluorescentTicks: View {
             ForEach(0..<60, id: \.self) { index in
                 let angle = Double(index) * 6
                 let radian = angle * Double.pi / 180
-                let isMajor = index % 5 == 0 // 每30度一个主刻度，已经由荧光刻度线覆盖
+        
                 
                 // 跳过主刻度位置（每30度）
                 if index % 5 != 0 {
