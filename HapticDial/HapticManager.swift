@@ -1,32 +1,39 @@
 // Core/HapticManager.swift
 import CoreHaptics
 import AVFoundation
-import Combine  // 添加这个
-import AudioToolbox  // 添加这个
+import Combine
+import AudioToolbox
 import CoreGraphics
 
-class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
+class HapticManager: NSObject, ObservableObject {
     static let shared = HapticManager()
     
     private var engine: CHHapticEngine?
     private var continuousPlayer: CHHapticPatternPlayer?
     private var isEngineStarted = false
     
-    // 触觉事件
-    private var clickEvent: CHHapticEvent?
-    private var softClickEvent: CHHapticEvent?
-    
     @Published var currentMode: DialMode = .ratchet
     @Published var isEnabled = true
-    @Published var volume: Float = 0.3  // 声音音量
+    @Published var volume: Float = 0.5  // 默认音量50%
+    @Published var hapticIntensity: Float = 0.7  // 默认触感强度70%
     
-    private var audioEngine: AVAudioEngine?
-    private var audioPlayerNode: AVAudioPlayerNode?
+    // 使用系统声音 ID
+    private let ratchetSoundID: SystemSoundID = 1104  // 轻微点击声
+    private let apertureSoundID: SystemSoundID = 1103  // 更柔和的点击声
+    
+    // 添加UserDefaults存储
+    private let defaults = UserDefaults.standard
+    private let volumeKey = "haptic_volume"
+    private let intensityKey = "haptic_intensity"
     
     private override init() {
         super.init()
+        
+        // 从UserDefaults加载设置
+        volume = defaults.float(forKey: volumeKey) == 0 ? 0.5 : defaults.float(forKey: volumeKey)
+        hapticIntensity = defaults.float(forKey: intensityKey) == 0 ? 0.7 : defaults.float(forKey: intensityKey)
+        
         prepareHaptics()
-        prepareAudio()
     }
     
     private func prepareHaptics() {
@@ -54,33 +61,6 @@ class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
             
         } catch {
             print("创建触觉引擎失败: \(error.localizedDescription)")
-        }
-    }
-    
-    private func prepareAudio() {
-        // 初始化音频引擎
-        audioEngine = AVAudioEngine()
-        audioPlayerNode = AVAudioPlayerNode()
-        
-        guard let audioEngine = audioEngine,
-              let audioPlayerNode = audioPlayerNode else {
-            print("音频引擎初始化失败")
-            return
-        }
-        
-        audioEngine.attach(audioPlayerNode)
-        audioEngine.connect(audioPlayerNode, to: audioEngine.mainMixerNode, format: nil)
-        
-        do {
-            try audioEngine.start()
-            audioPlayerNode.play()
-            
-            // 设置音频会话
-            try AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-            
-        } catch {
-            print("音频引擎启动失败: \(error)")
         }
     }
     
@@ -112,8 +92,12 @@ class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
             baseIntensity = 0.4
         }
         
+        // 应用用户设置的强度
+        let userIntensity = hapticIntensity
+        let baseWithUser = baseIntensity * userIntensity
+        
         // 根据速度调整强度
-        let intensity = Float(min(1.0, Double(baseIntensity) * velocity))
+        let intensity = Float(min(1.0, Double(baseWithUser) * velocity))
         
         do {
             let clickEvent = CHHapticEvent(
@@ -129,9 +113,9 @@ class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
             let player = try engine.makePlayer(with: pattern)
             try player.start(atTime: CHHapticTimeImmediate)
             
-            // 播放对应的声音
+            // 播放对应的声音（根据音量决定是否播放）
             if volume > 0 {
-                playSound(for: currentMode, velocity: velocity)
+                playSound(for: currentMode)
             }
             
         } catch {
@@ -139,19 +123,25 @@ class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
         }
     }
     
-    private func playSound(for mode: DialMode, velocity: Double) {
-        // 使用系统声音 - 使用不控制音量的版本
-        let systemSound: SystemSoundID
+    private func playSound(for mode: DialMode) {
+        // iOS 系统声音不支持音量调节，只能控制是否播放
+        let soundID = mode == .ratchet ? ratchetSoundID : apertureSoundID
         
-        switch mode {
-        case .ratchet:
-            systemSound = 1104  // 轻微点击声
-        case .aperture:
-            systemSound = 1103  // 更柔和的点击声
+        // 如果音量为0则不播放声音
+        if volume > 0 {
+            AudioServicesPlaySystemSound(soundID)
         }
-        
-        // 使用标准的播放函数
-        AudioServicesPlaySystemSound(systemSound)
+    }
+    
+    // 添加设置保存方法
+    func setVolume(_ value: Float) {
+        volume = value
+        defaults.set(value, forKey: volumeKey)
+    }
+    
+    func setHapticIntensity(_ value: Float) {
+        hapticIntensity = value
+        defaults.set(value, forKey: intensityKey)
     }
     
     func startContinuousHaptic(intensity: Float = 0.5, sharpness: Float = 0.5) {
@@ -196,5 +186,10 @@ class HapticManager: NSObject, ObservableObject {  // 改为继承 NSObject
         } catch {
             print("停止持续触觉失败: \(error)")
         }
+    }
+    
+    // 提供测试方法
+    func testHaptic() {
+        playClick()
     }
 }
