@@ -37,10 +37,14 @@ struct BubbleDialView: View {
     private let bubbleColor = Color(red: 0.2, green: 0.8, blue: 1.0)      // 数字颜色
     private let darkBubbleColor = Color(red: 0.1, green: 0.4, blue: 0.5) // 微粒颜色（更暗）
     private let highlightColor = Color(red: 0.4, green: 0.95, blue: 1.0)
+    private let grayRingColor = Color.gray.opacity(0.15)  // 灰色环颜色
     
     // 安全区域（避免中心数字区域）
     private var safeMinRadius: CGFloat { size * 0.25 }  // 中心保留25%半径给数字
     private var safeMaxRadius: CGFloat { size * 0.45 } // 避免边界
+    
+    // 灰色环尺寸（与齿轮转盘保持一致）
+    private var grayRingSize: CGFloat { size - 40 }  // 宽度为20的环（(size - (size-40))/2 = 20）
     
     init(viewModel: BubbleDialViewModel = BubbleDialViewModel()) {
         self.viewModel = viewModel
@@ -78,6 +82,11 @@ struct BubbleDialView: View {
                 )
                 .clipShape(Circle())
             
+            // 灰色环带 - 与齿轮转盘保持一致
+            Circle()
+                .fill(grayRingColor)
+                .frame(width: grayRingSize, height: grayRingSize)
+            
             // 气泡粒子 - 颜色比数字暗
             ForEach(0..<viewModel.tapCount, id: \.self) { index in
                 if index < particlePositions.count && index < particleSizes.count && index < particleColors.count {
@@ -105,13 +114,6 @@ struct BubbleDialView: View {
                 .foregroundColor(bubbleColor)
                 .shadow(color: bubbleColor.opacity(0.5), radius: 8, x: 0, y: 0)
                 .zIndex(1) // 确保数字在微粒之上
-            
-            // 重置按钮（长按）
-            .onLongPressGesture(minimumDuration: 1.0) {
-                resetParticles()
-                viewModel.resetCount()
-                HapticManager.shared.playClick()
-            }
         }
         .frame(width: size, height: size)
         .clipShape(Circle())
@@ -132,13 +134,18 @@ struct BubbleDialView: View {
         .onTapGesture {
             handleTap()
         }
-        .onChange(of: viewModel.tapCount) { newValue in
+        .onChange(of: viewModel.tapCount) {
             // 确保微粒数量与点击次数相同
-            updateParticles(count: newValue)
+            updateParticles(count: viewModel.tapCount)
         }
         .onAppear {
             // 初始化粒子
             updateParticles(count: viewModel.tapCount)
+        }
+        .onLongPressGesture(minimumDuration: 1.0) {
+            resetParticles()
+            viewModel.resetCount()
+            HapticManager.shared.playClick()
         }
         .opacity(viewModel.bubbleOpacity)
     }
@@ -187,7 +194,7 @@ struct BubbleDialView: View {
     }
     
     private func updateParticles(count: Int) {
-        let center = CGPoint(x: size / 2, y: size / 2)
+        _ = CGPoint(x: size / 2, y: size / 2)
         
         // 确保粒子数量等于点击次数
         if count > particlePositions.count {

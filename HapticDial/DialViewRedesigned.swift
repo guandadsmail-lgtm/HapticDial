@@ -17,6 +17,10 @@ struct DialViewRedesigned: View {
     private let fluorescentColor = Color(red: 0.8, green: 1.0, blue: 0.6)
     private let fluorescentHighlight = Color(red: 0.9, green: 1.0, blue: 0.7)
     
+    // 指示器颜色
+    private let bubbleBlue = Color(red: 0.2, green: 0.8, blue: 1.0)      // 气泡蓝色
+    private let gearRed = Color(red: 1.0, green: 0.4, blue: 0.2)         // 齿轮红色
+    
     // 计算灰色圆环的内外半径
     private var grayRingInnerRadius: CGFloat {
         return outerRadius - grayRingWidth / 2
@@ -67,6 +71,7 @@ struct DialViewRedesigned: View {
                 
                 // 内圈数字：1-12（时钟数字）- 调整位置以适应新的中心圆半径
                 InnerNumbers(center: center, innerRadius: innerRadius, grayRingInnerRadius: grayRingInnerRadius)
+                
                 // 中心液态玻璃区域 + 中心刻度线
                 CenterWithTicks(center: center, innerRadius: innerRadius, currentAngle: viewModel.currentAngle,
                                 fluorescentColor: fluorescentColor)
@@ -83,8 +88,9 @@ struct DialViewRedesigned: View {
                         .tracking(1)
                 }
                 
-                // 指示器（光标）
-                Indicator(outerRadius: outerRadius, currentAngle: viewModel.currentAngle)
+                // 指示器（光标）- 使用气泡蓝到齿轮红的渐变
+                Indicator(outerRadius: outerRadius, currentAngle: viewModel.currentAngle,
+                          bubbleBlue: bubbleBlue, gearRed: gearRed)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
@@ -405,16 +411,18 @@ struct CenterWithTicks: View {
 struct Indicator: View {
     let outerRadius: CGFloat
     let currentAngle: Double
+    let bubbleBlue: Color
+    let gearRed: Color
     
     var body: some View {
         ZStack {
-            // 指示器光标
+            // 指示器光标 - 使用气泡蓝到齿轮红的渐变
             Capsule()
                 .fill(
                     LinearGradient(
                         gradient: Gradient(colors: [
-                            Color.blue,
-                            Color.purple
+                            bubbleBlue,
+                            gearRed
                         ]),
                         startPoint: .top,
                         endPoint: .bottom
@@ -423,23 +431,23 @@ struct Indicator: View {
                 .frame(width: 5, height: 55)
                 .offset(y: -outerRadius)
                 .rotationEffect(.degrees(currentAngle))
-                .shadow(color: .blue.opacity(0.6), radius: 12, x: 0, y: 0)
+                .shadow(color: bubbleBlue.opacity(0.6), radius: 12, x: 0, y: 0)
             
-            // 光标顶端圆点
+            // 光标顶端圆点 - 气泡蓝色
             Circle()
-                .fill(Color.blue)
+                .fill(bubbleBlue)
                 .frame(width: 12, height: 12)
                 .offset(y: -outerRadius)
                 .rotationEffect(.degrees(currentAngle))
-                .shadow(color: .blue.opacity(0.9), radius: 6, x: 0, y: 0)
+                .shadow(color: bubbleBlue.opacity(0.9), radius: 6, x: 0, y: 0)
             
-            // 光标底部装饰
+            // 光标底部装饰 - 齿轮红色
             Circle()
-                .fill(Color.purple.opacity(0.7))
+                .fill(gearRed.opacity(0.7))
                 .frame(width: 8, height: 8)
                 .offset(y: -outerRadius + 30)
                 .rotationEffect(.degrees(currentAngle))
-                .shadow(color: .purple.opacity(0.5), radius: 3, x: 0, y: 0)
+                .shadow(color: gearRed.opacity(0.5), radius: 3, x: 0, y: 0)
         }
     }
 }

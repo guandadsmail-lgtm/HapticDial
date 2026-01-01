@@ -51,6 +51,8 @@ struct GearDialView: View {
     private let metalShadowColor = Color(red: 0.4, green: 0.4, blue: 0.45)
     private let gearTeethColor = Color(red: 1.0, green: 0.4, blue: 0.2)
     private let darkGrayRingColor = Color(red: 0.15, green: 0.15, blue: 0.2)
+    private let whiteTickColor = Color.white
+    private let whiteTickColorDim = Color.white.opacity(0.7)
     
     init(viewModel: GearDialViewModel = GearDialViewModel()) {
         self.viewModel = viewModel
@@ -77,25 +79,30 @@ struct GearDialView: View {
                 .fill(darkGrayRingColor)
                 .frame(width: size - 16, height: size - 16)  // 比外圈稍小
             
-            // 3. 外圈齿轮
+            // 3. 灰色环带 - 用于放置数字
+            Circle()
+                .fill(Color.gray.opacity(0.15))
+                .frame(width: size - 40, height: size - 40)
+            
+            // 4. 外圈齿轮
             GearTeethView(size: size, gearTeethColor: gearTeethColor)
             
-            // 4. 内圈刻度 - 每30度一个主刻度，每15度一个次刻度
+            // 5. 内圈刻度 - 每30度一个主刻度，每15度一个次刻度
             ForEach(0..<12, id: \.self) { index in
                 makeMainTick(index: index)
             }
             
-            // 5. 次要刻度线（每15度一个，颜色较暗）
+            // 6. 次要刻度线（每15度一个，颜色较暗）
             ForEach(0..<24, id: \.self) { index in
                 makeMinorTick(index: index)
             }
             
-            // 6. 只显示关键角度的数字：0, 3, 6, 9（对应时钟的12, 3, 6, 9）
+            // 7. 数字标签 - 放在灰色环带内
             ForEach([0, 3, 6, 9], id: \.self) { hour in
-                makeHourLabel(hour: hour)
+                makeHourText(hour: hour)
             }
             
-            // 7. 旋转次数显示（无背景）
+            // 8. 旋转次数显示（无背景）
             Text("\(viewModel.spinCount)")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(gearTeethColor)
@@ -130,7 +137,7 @@ struct GearDialView: View {
         )
     }
     
-    // 主刻度线（每30度一个）
+    // 主刻度线（每30度一个）- 白色
     @ViewBuilder
     private func makeMainTick(index: Int) -> some View {
         let angle = Double(index) * 30
@@ -146,16 +153,16 @@ struct GearDialView: View {
         let outerX = center.x + CGFloat(outerRadius * cos(radian))
         let outerY = center.y + CGFloat(outerRadius * sin(radian))
         
-        // 主刻度线 - 径向排列，垂直于圆环
+        // 主刻度线 - 白色
         Path { path in
             path.move(to: CGPoint(x: innerX, y: innerY))
             path.addLine(to: CGPoint(x: outerX, y: outerY))
         }
-        .stroke(gearTeethColor, lineWidth: 2)  // 使用齿轮颜色
-        .rotationEffect(.degrees(0)) // 确保径向排列
+        .stroke(whiteTickColor, lineWidth: 2)
+        .rotationEffect(.degrees(0))
     }
     
-    // 次要刻度线（每15度一个）
+    // 次要刻度线（每15度一个）- 白色（稍暗）
     @ViewBuilder
     private func makeMinorTick(index: Int) -> some View {
         let angle = Double(index) * 15
@@ -173,22 +180,18 @@ struct GearDialView: View {
             let outerX = center.x + CGFloat(outerRadius * cos(radian))
             let outerY = center.y + CGFloat(outerRadius * sin(radian))
             
-            // 次要刻度线 - 径向排列，颜色较暗
+            // 次要刻度线 - 白色稍暗
             Path { path in
                 path.move(to: CGPoint(x: innerX, y: innerY))
                 path.addLine(to: CGPoint(x: outerX, y: outerY))
             }
-            .stroke(metalHighlightColor.opacity(0.5), lineWidth: 1)
+            .stroke(whiteTickColorDim, lineWidth: 1)
             .rotationEffect(.degrees(0))
-        } else {
-            // 如果是主刻度位置，返回空视图
-            EmptyView()
         }
     }
     
-    // 小时标签（显示为时钟数字：3, 6, 9, 12）
-    @ViewBuilder
-    private func makeHourLabel(hour: Int) -> some View {
+    // 小时标签（显示为时钟数字：3, 6, 9, 12）- 放在灰色环带内
+    private func makeHourText(hour: Int) -> some View {
         let angle: Double
         let label: String
         
@@ -207,22 +210,22 @@ struct GearDialView: View {
             angle = 180.0
             label = "9"
         default:
-            // 对于不匹配的情况，返回空视图
-            EmptyView()
-            return
+            return AnyView(EmptyView())
         }
         
         let radian = angle * Double.pi / 180
         let center = CGPoint(x: size / 2, y: size / 2)
-        let labelRadius = size / 2 - 38  // 离中心更远
+        let labelRadius = size / 2 - 20  // 调整到灰色环带内
         
         let labelX = center.x + CGFloat(labelRadius * cos(radian))
         let labelY = center.y + CGFloat(labelRadius * sin(radian))
         
-        Text(label)
-            .font(.system(size: 12, weight: .bold, design: .monospaced))  // 适当字号
-            .foregroundColor(metalHighlightColor)
-            .position(x: labelX, y: labelY)
+        return AnyView(
+            Text(label)
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .foregroundColor(whiteTickColor)
+                .position(x: labelX, y: labelY)
+        )
     }
 }
 
@@ -309,25 +312,5 @@ struct SingleGearTooth: View {
             path.addLine(to: finalValleyPoint)
         }
         .stroke(Color.black.opacity(0.3), lineWidth: 0.5)
-    }
-}
-
-// 简单齿轮齿视图
-struct GearToothView: View {
-    let angle: Double
-    let center: CGPoint
-    let radius: CGFloat
-    let gearColor: Color
-    
-    var body: some View {
-        let radian = angle * Double.pi / 180
-        let x = center.x + radius * CGFloat(cos(radian))
-        let y = center.y + radius * CGFloat(sin(radian))
-        
-        Rectangle()
-            .fill(gearColor)
-            .frame(width: 4, height: 15)
-            .position(x: x, y: y)
-            .rotationEffect(.degrees(angle))
     }
 }
