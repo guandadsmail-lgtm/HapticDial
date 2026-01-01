@@ -6,9 +6,14 @@ class BubbleDialViewModel: ObservableObject {
     @Published var tapCount: Int = 0
     @Published var bubbleOpacity: Double = 1.0
     
+    private var lastFireworksCount = 0
+    
     func incrementCount() {
         tapCount += 1
         bubbleOpacity = 0.8
+        
+        // 检查是否需要触发烟火效果
+        checkForFireworks()
         
         HapticManager.shared.playClick()
         
@@ -21,6 +26,15 @@ class BubbleDialViewModel: ObservableObject {
     
     func resetCount() {
         tapCount = 0
+        lastFireworksCount = 0
+    }
+    
+    private func checkForFireworks() {
+        // 每当达到100或100的整数倍时触发烟火
+        if tapCount >= 100 && tapCount % 100 == 0 && tapCount > lastFireworksCount {
+            lastFireworksCount = tapCount
+            FireworksManager.shared.triggerFireworks()
+        }
     }
 }
 
@@ -38,6 +52,9 @@ struct BubbleDialView: View {
     private let darkBubbleColor = Color(red: 0.1, green: 0.4, blue: 0.5) // 微粒颜色（更暗）
     private let highlightColor = Color(red: 0.4, green: 0.95, blue: 1.0)
     private let grayRingColor = Color.gray.opacity(0.15)  // 灰色环颜色
+    private let tickColor = Color.white.opacity(0.7)      // 刻度线颜色
+    private let majorTickColor = Color.white              // 主刻度线颜色
+    private let blueBorderColor = Color(red: 0.2, green: 0.8, blue: 1.0).opacity(0.6) // 蓝色边框
     
     // 安全区域（避免中心数字区域）
     private var safeMinRadius: CGFloat { size * 0.25 }  // 中心保留25%半径给数字
@@ -45,6 +62,10 @@ struct BubbleDialView: View {
     
     // 灰色环尺寸（与齿轮转盘保持一致）
     private var grayRingSize: CGFloat { size - 40 }  // 宽度为20的环（(size - (size-40))/2 = 20）
+    
+    // 刻度线参数 - 调整到最外沿
+    private var tickInnerRadius: CGFloat { size / 2 - 8 }  // 刻度线内径
+    private var tickOuterRadius: CGFloat { size / 2 - 2 }  // 刻度线外径
     
     init(viewModel: BubbleDialViewModel = BubbleDialViewModel()) {
         self.viewModel = viewModel
@@ -87,15 +108,66 @@ struct BubbleDialView: View {
                 .fill(grayRingColor)
                 .frame(width: grayRingSize, height: grayRingSize)
             
-            // 气泡粒子 - 颜色比数字暗
+            // 主刻度线（每30度一个）- 白色，沿最外沿
+            ForEach(0..<12, id: \.self) { index in
+                let angle = Double(index) * 30
+                let radian = angle * Double.pi / 180
+                let center = CGPoint(x: size / 2, y: size / 2)
+                
+                // 计算内圈和外圈的位置
+                let innerX = center.x + CGFloat(tickInnerRadius * cos(radian))
+                let innerY = center.y + CGFloat(tickInnerRadius * sin(radian))
+                let outerX = center.x + CGFloat(tickOuterRadius * cos(radian))
+                let outerY = center.y + CGFloat(tickOuterRadius * sin(radian))
+                
+                // 主刻度线 - 白色
+                Path { path in
+                    path.move(to: CGPoint(x: innerX, y: innerY))
+                    path.addLine(to: CGPoint(x: outerX, y: outerY))
+                }
+                .stroke(majorTickColor, lineWidth: 2)
+            }
+            
+            // 次要刻度线（每6度一个）- 白色稍暗
+            ForEach(0..<60, id: \.self) { index in
+                let angle = Double(index) * 6
+                // 跳过主刻度位置
+                if angle.truncatingRemainder(dividingBy: 30) != 0 {
+                    let radian = angle * Double.pi / 180
+                    let center = CGPoint(x: size / 2, y: size / 2)
+                    
+                    // 计算内圈和外圈的位置
+                    let innerRadius = size / 2 - 6
+                    let outerRadius = size / 2 - 2
+                    
+                    let innerX = center.x + CGFloat(innerRadius * cos(radian))
+                    let innerY = center.y + CGFloat(innerRadius * sin(radian))
+                    let outerX = center.x + CGFloat(outerRadius * cos(radian))
+                    let outerY = center.y + CGFloat(outerRadius * sin(radian))
+                    
+                    // 次要刻度线 - 白色稍暗
+                    Path { path in
+                        path.move(to: CGPoint(x: innerX, y: innerY))
+                        path.addLine(to: CGPoint(x: outerX, y: outerY))
+                    }
+                    .stroke(tickColor, lineWidth: 1)
+                }
+            }
+            
+            // 最外沿的蓝色细边框 - 紧贴刻度线
+            Circle()
+                .stroke(blueBorderColor, lineWidth: 1)
+                .frame(width: size - 4, height: size - 4)
+            
+            // 气泡粒子 - 颜色比数字暗，放在刻度线之上
             ForEach(0..<viewModel.tapCount, id: \.self) { index in
                 if index < particlePositions.count && index < particleSizes.count && index < particleColors.count {
                     Circle()
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    particleColors[index].opacity(0.7),
-                                    particleColors[index].opacity(0.4)
+                                    particleColors[index].opacity(0.9),
+                                    particleColors[index].opacity(0.6)
                                 ]),
                                 center: .center,
                                 startRadius: 0,
@@ -104,7 +176,8 @@ struct BubbleDialView: View {
                         )
                         .frame(width: particleSizes[index], height: particleSizes[index])
                         .position(particlePositions[index])
-                        .shadow(color: particleColors[index].opacity(0.3), radius: 2, x: 0, y: 0)
+                        .shadow(color: particleColors[index].opacity(0.5), radius: 4, x: 0, y: 0)
+                        .zIndex(2) // 确保微粒在刻度线之上
                 }
             }
             
@@ -113,7 +186,7 @@ struct BubbleDialView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(bubbleColor)
                 .shadow(color: bubbleColor.opacity(0.5), radius: 8, x: 0, y: 0)
-                .zIndex(1) // 确保数字在微粒之上
+                .zIndex(3) // 确保数字在微粒之上
         }
         .frame(width: size, height: size)
         .clipShape(Circle())

@@ -5,6 +5,7 @@ struct ContentView: View {
     @StateObject private var viewModel = DialViewModel()
     @StateObject private var bubbleViewModel = BubbleDialViewModel()
     @StateObject private var gearViewModel = GearDialViewModel()
+    @StateObject private var fireworksManager = FireworksManager.shared
     @State private var showSettings = false
     
     var body: some View {
@@ -185,6 +186,15 @@ struct ContentView: View {
                         .padding(.trailing, 16)
                     }
                     Spacer()
+                }
+                
+                // 烟火效果 - 放到最顶层，确保不被遮挡
+                if fireworksManager.showFireworks {
+                    FireworksView()
+                        .edgesIgnoringSafeArea(.all)  // 忽略安全区域
+                        .zIndex(1000)  // 更高的 z-index
+                        .allowsHitTesting(false)  // 允许点击穿透
+                        .transition(.opacity)
                 }
             }
         }

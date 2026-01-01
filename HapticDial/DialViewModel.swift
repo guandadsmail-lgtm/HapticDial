@@ -16,6 +16,7 @@ class DialViewModel: ObservableObject {
     private var lastNotchAngle: Double = 0.0
     private var lastDragAngle: Double = 0.0
     private var cancellables = Set<AnyCancellable>()
+    private var lastFireworksRotation: Double = 0.0
     
     init(initialMode: DialMode = .ratchet) {
         self.currentMode = initialMode
@@ -72,6 +73,9 @@ class DialViewModel: ObservableObject {
         
         // 累加总旋转
         totalRotation = totalRotation + abs(delta)
+        
+        // 检查是否需要触发烟火效果
+        checkForFireworks()
     }
     
     func handleDragEnd() {
@@ -147,5 +151,17 @@ class DialViewModel: ObservableObject {
     
     func resetStats() {
         totalRotation = 0
+        lastFireworksRotation = 0
+    }
+    
+    private func checkForFireworks() {
+        let currentRotationCount = Int(totalRotation / 360)
+        let lastRotationCount = Int(lastFireworksRotation / 360)
+        
+        // 每当达到100圈或100圈的整数倍时触发烟火
+        if currentRotationCount >= 100 && currentRotationCount % 100 == 0 && currentRotationCount > lastRotationCount {
+            lastFireworksRotation = totalRotation
+            FireworksManager.shared.triggerFireworks()
+        }
     }
 }

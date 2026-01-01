@@ -7,11 +7,16 @@ class GearDialViewModel: ObservableObject {
     @Published var isSpinning = false
     @Published var rotationAngle: Double = 0.0
     
+    private var lastFireworksCount = 0
+    
     func spinGear() {
         guard !isSpinning else { return }
         
         isSpinning = true
         spinCount += 1
+        
+        // 检查是否需要触发烟火效果
+        checkForFireworks()
         
         HapticManager.shared.playClick()
         
@@ -37,6 +42,15 @@ class GearDialViewModel: ObservableObject {
     func resetCount() {
         spinCount = 0
         rotationAngle = 0
+        lastFireworksCount = 0
+    }
+    
+    private func checkForFireworks() {
+        // 每当达到100或100的整数倍时触发烟火
+        if spinCount >= 100 && spinCount % 100 == 0 && spinCount > lastFireworksCount {
+            lastFireworksCount = spinCount
+            FireworksManager.shared.triggerFireworks()
+        }
     }
 }
 
@@ -97,7 +111,7 @@ struct GearDialView: View {
                 makeMinorTick(index: index)
             }
             
-            // 7. 数字标签 - 放在灰色环带内
+            // 7. 数字标签 - 移动到最外圈
             ForEach([0, 3, 6, 9], id: \.self) { hour in
                 makeHourText(hour: hour)
             }
@@ -190,7 +204,7 @@ struct GearDialView: View {
         }
     }
     
-    // 小时标签（显示为时钟数字：3, 6, 9, 12）- 放在灰色环带内
+    // 小时标签（显示为时钟数字：3, 6, 9, 12）- 移动到最外圈
     private func makeHourText(hour: Int) -> some View {
         let angle: Double
         let label: String
@@ -215,7 +229,7 @@ struct GearDialView: View {
         
         let radian = angle * Double.pi / 180
         let center = CGPoint(x: size / 2, y: size / 2)
-        let labelRadius = size / 2 - 20  // 调整到灰色环带内
+        let labelRadius = size / 2 - 5  // 移动到最外圈，紧贴边缘
         
         let labelX = center.x + CGFloat(labelRadius * cos(radian))
         let labelY = center.y + CGFloat(labelRadius * sin(radian))

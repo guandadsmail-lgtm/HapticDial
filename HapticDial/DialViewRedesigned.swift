@@ -30,6 +30,11 @@ struct DialViewRedesigned: View {
         return outerRadius + grayRingWidth / 2
     }
     
+    // 计算旋转圈数
+    private var rotationCount: Int {
+        return Int(viewModel.totalRotation / 360)
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
@@ -77,7 +82,7 @@ struct DialViewRedesigned: View {
                                 fluorescentColor: fluorescentColor)
                 
                 // 当前角度显示在中心
-                VStack(spacing: 2) {
+                VStack(spacing: 5) {
                     Text("\(Int(viewModel.currentAngle.rounded()))°")
                         .font(.system(size: 26, weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
@@ -86,6 +91,19 @@ struct DialViewRedesigned: View {
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
                         .tracking(1)
+                    
+                    // 新增：旋转圈数显示
+                    VStack(spacing: 2) {
+                        Text("\(rotationCount)")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        Text("TURNS")
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                            .tracking(1)
+                    }
+                    .padding(.top, 5)
                 }
                 
                 // 指示器（光标）- 使用气泡蓝到齿轮红的渐变
