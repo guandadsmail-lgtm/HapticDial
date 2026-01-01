@@ -15,7 +15,7 @@ class FireworksManager: ObservableObject {
         showFireworks = true
         
         // 8秒后自动隐藏（烟火持续5秒+3秒淡出）
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) {
             self.showFireworks = false
         }
     }
