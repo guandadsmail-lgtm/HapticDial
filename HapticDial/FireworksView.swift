@@ -35,7 +35,7 @@ struct FireworksView: View {
                         // 立即开始烟火效果
                         viewModel.startFireworks()
                     }
-                    .onChange(of: geometry.size) { newSize in
+                    .onChange(of: geometry.size) { oldSize, newSize in
                         viewModel.screenSize = newSize
                     }
                 }
@@ -45,6 +45,31 @@ struct FireworksView: View {
                 print("🎆 FireworksView 消失")
                 viewModel.stopFireworks()
             }
+    }
+}
+
+// 烟火状态
+enum FireworkState {
+    case launching   // 发射中
+    case exploding   // 爆炸中
+    case finished    // 结束
+}
+
+// 爆炸区域枚举
+enum ExplosionZone {
+    case top     // 屏幕上部 (0-0.33)
+    case middle  // 屏幕中部 (0.33-0.66)
+    case bottom  // 屏幕下部 (0.66-1.0)
+    
+    var heightRange: (CGFloat, CGFloat) {
+        switch self {
+        case .top:
+            return (0.1, 0.3)     // 屏幕高度10%-30%
+        case .middle:
+            return (0.4, 0.6)     // 屏幕高度40%-60%
+        case .bottom:
+            return (0.7, 0.9)     // 屏幕高度70%-90%
+        }
     }
 }
 
@@ -165,31 +190,6 @@ struct FlashView: View {
     }
 }
 
-// 烟火状态
-enum FireworkState {
-    case launching   // 发射中
-    case exploding   // 爆炸中
-    case finished    // 结束
-}
-
-// 爆炸区域枚举
-enum ExplosionZone {
-    case top     // 屏幕上部 (0-0.33)
-    case middle  // 屏幕中部 (0.33-0.66)
-    case bottom  // 屏幕下部 (0.66-1.0)
-    
-    var heightRange: (CGFloat, CGFloat) {
-        switch self {
-        case .top:
-            return (0.1, 0.3)     // 屏幕高度10%-30%
-        case .middle:
-            return (0.4, 0.6)     // 屏幕高度40%-60%
-        case .bottom:
-            return (0.7, 0.9)     // 屏幕高度70%-90%
-        }
-    }
-}
-
 // 烟火数据模型
 class Firework: Identifiable {
     let id = UUID()
@@ -262,13 +262,13 @@ class Flash: Identifiable {
 }
 
 // 烟火视图模型 - 重新设计，支持多区域爆炸
+@MainActor
 class FireworksViewModel: ObservableObject {
     @Published var fireworks: [Firework] = []
     @Published var particles: [FireworkParticle] = []
     @Published var flashes: [Flash] = []
     
     var screenSize: CGSize = .zero
-    private var timer: Timer?
     private var launchTimer: Timer?
     private var isActive = false
     private var fireworkCount = 0
@@ -280,6 +280,20 @@ class FireworksViewModel: ObservableObject {
     private var bottomExplosions = 0
     private var totalExplosions = 0
     
+    // 动画相关
+    private var animationStartTime: Date?
+    private var animationTask: Task<Void, Never>?
+    
+    // 用于比较 FireworkState 的辅助函数
+    private func isFireworkStateEqualTo(_ firework: Firework, _ state: FireworkState) -> Bool {
+        switch (firework.state, state) {
+        case (.launching, .launching): return true
+        case (.exploding, .exploding): return true
+        case (.finished, .finished): return true
+        default: return false
+        }
+    }
+    
     func startFireworks() {
         guard screenSize.width > 0, screenSize.height > 0 else { return }
         
@@ -289,6 +303,7 @@ class FireworksViewModel: ObservableObject {
         middleExplosions = 0
         bottomExplosions = 0
         totalExplosions = 0
+        animationStartTime = Date()
         
         print("🎆 开始烟火效果，屏幕尺寸: \(screenSize)")
         
@@ -297,32 +312,39 @@ class FireworksViewModel: ObservableObject {
         particles.removeAll()
         flashes.removeAll()
         
+        // 启动动画循环
+        startAnimationLoop()
+        
         // 立即发射第一波烟火
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.launchFireworksWave()
+            Task { @MainActor in
+                self.launchFireworksWave()
+            }
         }
         
         // 开始发射烟火（间隔1.5-2.5秒）
         launchTimer = Timer.scheduledTimer(withTimeInterval: 1.8, repeats: true) { [weak self] _ in
-            guard let self = self, self.isActive else { return }
-            self.launchFireworksWave()
-        }
-        
-        // 更新物理模拟
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0/30.0, repeats: true) { [weak self] _ in
-            guard let self = self, self.isActive else { return }
-            self.updatePhysics()
+            guard let self = self else { return }
+            Task { @MainActor in
+                if self.isActive {
+                    self.launchFireworksWave()
+                }
+            }
         }
         
         // 30秒后停止
         DispatchQueue.main.asyncAfter(deadline: .now() + 30.0) { [weak self] in
-            print("🎆 30秒时间到，停止烟火")
-            self?.stopFireworks()
+            Task { @MainActor in
+                print("🎆 30秒时间到，停止烟火")
+                self?.stopFireworks()
+            }
         }
         
         // 调试信息
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
-            print("🎆 10秒后 - 顶部爆炸: \(self.topExplosions), 中部: \(self.middleExplosions), 底部: \(self.bottomExplosions)")
+            Task { @MainActor in
+                print("🎆 10秒后 - 顶部爆炸: \(self.topExplosions), 中部: \(self.middleExplosions), 底部: \(self.bottomExplosions)")
+            }
         }
     }
     
@@ -368,13 +390,15 @@ class FireworksViewModel: ObservableObject {
         
         // 安全清理：6秒后如果还没爆炸，强制清理
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) { [weak self] in
-            guard let self = self else { return }
-            
-            if let index = self.fireworks.firstIndex(where: { $0.id == firework.id }) {
-                if self.fireworks[index].state == .launching {
-                    print("🎆 烟火超时，强制清理")
-                    self.fireworks[index].state = .finished
-                    self.fireworkCount -= 1
+            Task { @MainActor in
+                guard let self = self else { return }
+                
+                if let index = self.fireworks.firstIndex(where: { $0.id == firework.id }) {
+                    if self.isFireworkStateEqualTo(self.fireworks[index], .launching) {
+                        print("🎆 烟火超时，强制清理")
+                        self.fireworks[index].state = .finished
+                        self.fireworkCount -= 1
+                    }
                 }
             }
         }
@@ -465,42 +489,50 @@ class FireworksViewModel: ObservableObject {
     private func startHeightMonitoring(for firework: Firework) {
         let fireworkId = firework.id
         
-        // 使用定时器检查高度
-        Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            if let index = self.fireworks.firstIndex(where: { $0.id == fireworkId }) {
+        func checkHeight() {
+            Task { @MainActor in
+                guard let index = self.fireworks.firstIndex(where: { $0.id == fireworkId }) else {
+                    return  // 烟火已不存在
+                }
+                
                 let currentFirework = self.fireworks[index]
                 
                 // 检查是否到达或接近目标高度（增加容错范围）
                 let heightDifference = currentFirework.position.y - currentFirework.targetHeight
                 let isCloseToTarget = abs(heightDifference) < 30  // 30像素容错范围
                 
-                if currentFirework.state == .launching && isCloseToTarget {
-                    timer.invalidate()
-                    print("🎆 烟火到达目标高度附近: \(currentFirework.position.y)，目标: \(currentFirework.targetHeight)，高度差: \(heightDifference)")
-                    self.explodeFirework(at: index)
+                if self.isFireworkStateEqualTo(currentFirework, .launching) {
+                    if isCloseToTarget {
+                        print("🎆 烟火到达目标高度附近: \(currentFirework.position.y)，目标: \(currentFirework.targetHeight)，高度差: \(heightDifference)")
+                        self.explodeFirework(at: index)
+                        return
+                    }
+                    
+                    // 检查是否到达目标高度以下
+                    if currentFirework.position.y <= currentFirework.targetHeight {
+                        print("🎆 烟火到达目标高度以下: \(currentFirework.position.y)，目标: \(currentFirework.targetHeight)")
+                        self.explodeFirework(at: index)
+                        return
+                    }
+                    
+                    // 检查是否飞出屏幕顶部
+                    if currentFirework.position.y < -100 {
+                        print("🎆 烟火飞出屏幕，强制爆炸")
+                        self.explodeFirework(at: index)
+                        return
+                    }
+                    
+                    // 继续检查
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) {
+                        checkHeight()
+                    }
                 }
-                
-                // 检查是否到达目标高度以下
-                if currentFirework.state == .launching && currentFirework.position.y <= currentFirework.targetHeight {
-                    timer.invalidate()
-                    print("🎆 烟火到达目标高度以下: \(currentFirework.position.y)，目标: \(currentFirework.targetHeight)")
-                    self.explodeFirework(at: index)
-                }
-                
-                // 检查是否飞出屏幕顶部
-                if currentFirework.position.y < -100 {
-                    timer.invalidate()
-                    print("🎆 烟火飞出屏幕，强制爆炸")
-                    self.explodeFirework(at: index)
-                }
-            } else {
-                timer.invalidate()
             }
+        }
+        
+        // 开始检查
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.016) {
+            checkHeight()
         }
     }
     
@@ -537,10 +569,12 @@ class FireworksViewModel: ObservableObject {
         
         // 3秒后清理
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
-            guard let self = self, index < self.fireworks.count else { return }
-            if self.fireworks[index].state == .exploding {
-                self.fireworks[index].state = .finished
-                self.fireworkCount -= 1
+            Task { @MainActor in
+                guard let self = self, index < self.fireworks.count else { return }
+                if self.isFireworkStateEqualTo(self.fireworks[index], .exploding) {
+                    self.fireworks[index].state = .finished
+                    self.fireworkCount -= 1
+                }
             }
         }
     }
@@ -608,14 +642,37 @@ class FireworksViewModel: ObservableObject {
         }
     }
     
-    private func updatePhysics() {
-        guard isActive else { return }
+    private func startAnimationLoop() {
+        animationTask?.cancel()
+        animationStartTime = Date()
         
+        animationTask = Task {
+            let frameDuration: TimeInterval = 1.0/30.0 // 30 FPS
+            
+            while !Task.isCancelled && isActive {
+                let frameStartTime = Date()
+                
+                // 更新物理模拟
+                await MainActor.run {
+                    self.updatePhysics()
+                }
+                
+                // 计算这一帧的实际耗时
+                let frameTime = Date().timeIntervalSince(frameStartTime)
+                let sleepTime = max(0, frameDuration - frameTime)
+                
+                // 等待下一帧
+                try? await Task.sleep(nanoseconds: UInt64(sleepTime * 1_000_000_000))
+            }
+        }
+    }
+    
+    private func updatePhysics() {
         // 更新烟火（发射中的）
         for i in fireworks.indices {
             fireworks[i].lifeTime += 1.0/30.0
             
-            if fireworks[i].state == .launching {
+            if isFireworkStateEqualTo(fireworks[i], .launching) {
                 // 减少重力影响，让烟火更容易上升
                 fireworks[i].velocity.y += 0.02  // 从0.03减少到0.02
                 
@@ -706,7 +763,9 @@ class FireworksViewModel: ObservableObject {
         // 清理结束的粒子
         particles.removeAll { $0.opacity <= 0.01 }
         flashes.removeAll { $0.opacity <= 0.01 }
-        fireworks.removeAll { $0.state == .finished && $0.opacity <= 0.01 }
+        fireworks.removeAll {
+            isFireworkStateEqualTo($0, .finished) && $0.opacity <= 0.01
+        }
     }
     
     func stopFireworks() {
@@ -716,10 +775,10 @@ class FireworksViewModel: ObservableObject {
         guard isActive else { return }
         
         isActive = false
+        animationTask?.cancel()
+        animationTask = nil
         launchTimer?.invalidate()
         launchTimer = nil
-        timer?.invalidate()
-        timer = nil
         
         // 淡出所有效果
         withAnimation(.easeOut(duration: 1.5)) {
@@ -736,13 +795,18 @@ class FireworksViewModel: ObservableObject {
         
         // 2秒后清除所有
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
-            self?.fireworks.removeAll()
-            self?.particles.removeAll()
-            self?.flashes.removeAll()
+            Task { @MainActor in
+                self?.fireworks.removeAll()
+                self?.particles.removeAll()
+                self?.flashes.removeAll()
+            }
         }
     }
     
     deinit {
-        stopFireworks()
+        animationTask?.cancel()
+        animationTask = nil
+        launchTimer?.invalidate()
+        launchTimer = nil
     }
 }

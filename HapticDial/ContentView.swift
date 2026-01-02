@@ -6,13 +6,14 @@ struct ContentView: View {
     @StateObject private var bubbleViewModel = BubbleDialViewModel()
     @StateObject private var gearViewModel = GearDialViewModel()
     @StateObject private var fireworksManager = FireworksManager.shared
+    @StateObject private var crackManager = CrackManager.shared
+    @StateObject private var effectManager = EffectManager.shared
     @State private var showSettings = false
     
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
             let screenHeight = geometry.size.height
-            let screenWidth = geometry.size.width
             let isSmallScreen = screenHeight < 800 // 6.5寸屏幕高度约为844pt
             
             // 根据屏幕方向和大小计算垂直间距
@@ -33,6 +34,35 @@ struct ContentView: View {
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
+                
+                // 效果模式提示
+                if effectManager.showSettingsInfo {
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Image(systemName: effectManager.currentEffectIcon)
+                                .font(.system(size: 14))
+                            Text("Effect Mode: \(effectManager.currentEffectName)")
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.6))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .padding(.bottom, 100)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: effectManager.showSettingsInfo)
+                    }
+                    .zIndex(999)
+                }
                 
                 if isLandscape {
                     // 横屏布局：主转盘在中间，小转盘在两侧
@@ -117,6 +147,20 @@ struct ContentView: View {
                                 .foregroundColor(.white.opacity(0.6))
                                 .tracking(2)
                                 .padding(.top, verticalPadding)
+                            
+                            // 当前效果模式显示
+                            HStack(spacing: 8) {
+                                Image(systemName: effectManager.currentEffectIcon)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(effectManager.currentEffectMode == "fireworks" ?
+                                                   Color(red: 1.0, green: 0.6, blue: 0.2) :
+                                                   Color(red: 0.2, green: 0.8, blue: 1.0))
+                                
+                                Text("Effect: \(effectManager.currentEffectName)")
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .padding(.top, 8)
                             
                             Spacer(minLength: isSmallScreen ? 20 : 30)
                             
@@ -208,6 +252,17 @@ struct ContentView: View {
                         .allowsHitTesting(false)
                         .transition(.opacity)
                 }
+                
+                // 玻璃破裂效果
+                if crackManager.showCracks {
+                    CrackView()
+                        .edgesIgnoringSafeArea(.all)
+                        .zIndex(1000)
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+                
+
             }
         }
         .sheet(isPresented: $showSettings) {

@@ -1,5 +1,6 @@
 // Views/LaunchScreen.swift
 import SwiftUI
+import Combine
 
 struct LaunchScreen: View {
     @State private var ringProgress: CGFloat = 0.0

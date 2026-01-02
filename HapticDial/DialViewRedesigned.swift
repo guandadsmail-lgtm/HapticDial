@@ -1,5 +1,6 @@
 // Views/DialViewRedesigned.swift
 import SwiftUI
+import Combine
 
 struct DialViewRedesigned: View {
     @ObservedObject var viewModel: DialViewModel
@@ -365,8 +366,8 @@ struct CenterWithTicks: View {
                 .fill(
                     RadialGradient(
                         gradient: Gradient(colors: [
-                            Color.white.opacity(0.15),
-                            Color.white.opacity(0.05),
+                            Color.white.opacity(0.26),
+                            Color.white.opacity(0.3),
                             Color.clear
                         ]),
                         center: .center,

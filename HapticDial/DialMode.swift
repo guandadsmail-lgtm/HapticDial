@@ -1,5 +1,6 @@
 // Models/DialMode.swift
 import Foundation
+import Combine
 
 enum DialMode: String, CaseIterable {
     case ratchet    // 棘轮模式

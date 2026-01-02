@@ -1,5 +1,6 @@
 // Views/DialView.swift
 import SwiftUI
+import Combine
 
 struct DialView: View {
     @ObservedObject var viewModel: DialViewModel

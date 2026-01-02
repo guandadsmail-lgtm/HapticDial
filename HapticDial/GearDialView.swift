@@ -1,75 +1,25 @@
-
 // Views/GearDialView.swift
 import SwiftUI
 import Combine
-
-class GearDialViewModel: ObservableObject {
-    @Published var spinCount: Int = 0
-    @Published var isSpinning = false
-    @Published var rotationAngle: Double = 0.0
-    
-    private var lastFireworksCount = 0
-    
-    func spinGear() {
-        guard !isSpinning else { return }
-        
-        isSpinning = true
-        spinCount += 1
-        
-        // 检查是否需要触发烟火效果
-        checkForFireworks()
-        
-        HapticManager.shared.playClick()
-        
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            rotationAngle += 360
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            HapticManager.shared.playClick(velocity: 0.6)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            HapticManager.shared.playClick(velocity: 0.5)
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            HapticManager.shared.playClick(velocity: 0.4)
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            self.isSpinning = false
-        }
-    }
-    
-    func resetCount() {
-        spinCount = 0
-        rotationAngle = 0
-        lastFireworksCount = 0
-    }
-    
-    private func checkForFireworks() {
-        // 每当达到100或100的整数倍时触发烟火
-        if spinCount >= 100 && spinCount % 100 == 0 && spinCount > lastFireworksCount {
-            lastFireworksCount = spinCount
-            FireworksManager.shared.triggerFireworks()
-        }
-    }
-}
 
 struct GearDialView: View {
     @ObservedObject var viewModel: GearDialViewModel
     
     let size: CGFloat = 120
     
-    // 颜色定义
+    // 颜色定义 - 修改外圈环为白色，数字为红色
     private let metalBaseColor = Color(red: 0.7, green: 0.7, blue: 0.75)
     private let metalHighlightColor = Color(red: 0.9, green: 0.9, blue: 0.95)
     private let metalShadowColor = Color(red: 0.4, green: 0.4, blue: 0.45)
     private let gearTeethColor = Color(red: 1.0, green: 0.4, blue: 0.2)
-    private let darkGrayRingColor = Color(red: 0.25, green: 0.25, blue: 0.3)  // 修改：灰色更浅
-    private let whiteTickColor = Color.white
+    private let whiteRingColor = Color.white.opacity(0.8)  // 修改：灰色环改为白色
+
+    private let tickColor = Color.white  // 主刻度线为白色
+    private let tickColorDim = Color(red: 0.85, green: 0.85, blue: 0.85).opacity(0.7)  // 浅灰色
     private let whiteTickColorDim = Color.white.opacity(0.7)
+    private let numberColor = Color.red  // 新增：数字颜色为红色
     
-    init(viewModel: GearDialViewModel = GearDialViewModel()) {
+    init(viewModel: GearDialViewModel) {
         self.viewModel = viewModel
     }
     
@@ -78,9 +28,9 @@ struct GearDialView: View {
             // 1. 辐射背景 - 中心暗，周边亮
             RadialGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 0.08, green: 0.08, blue: 0.12),  // 中心暗
-                    Color(red: 0.15, green: 0.15, blue: 0.20),  // 中间
-                    Color(red: 0.22, green: 0.22, blue: 0.28)   // 边缘亮
+                    Color(red: 0.08, green: 0.08, blue: 0.12, opacity: 0.7),  // 中心暗
+                          Color(red: 0.15, green: 0.15, blue: 0.20, opacity: 0.7),  // 中间
+                          Color(red: 0.22, green: 0.22, blue: 0.28, opacity: 0.7)   // 边缘亮
                 ]),
                 center: .center,
                 startRadius: 0,
@@ -89,14 +39,14 @@ struct GearDialView: View {
             .frame(width: size, height: size)
             .clipShape(Circle())
             
-            // 2. 齿轮外和最外圈边界之间的灰色填充环 - 颜色更浅
+            // 2. 齿轮外和最外圈边界之间的白色填充环 - 修改为白色
             Circle()
-                .fill(darkGrayRingColor)
-                .frame(width: size - 16, height: size - 16)  // 比外圈稍小
+                .fill(whiteRingColor.opacity(0.3))  // 修改为白色
+                .frame(width: size - 16, height: size - 16)
             
             // 3. 灰色环带 - 用于放置数字
             Circle()
-                .fill(Color.gray.opacity(0.15))
+                .fill(Color.white.opacity(0.2))
                 .frame(width: size - 40, height: size - 40)
             
             // 4. 外圈齿轮
@@ -112,7 +62,7 @@ struct GearDialView: View {
                 makeMinorTick(index: index)
             }
             
-            // 7. 数字标签 - 移动到最外圈
+            // 7. 数字标签 - 移动到最外圈，修改为红色
             ForEach([0, 3, 6, 9], id: \.self) { hour in
                 makeHourText(hour: hour)
             }
@@ -120,9 +70,9 @@ struct GearDialView: View {
             // 8. 旋转次数显示（无背景）
             Text("\(viewModel.spinCount)")
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(gearTeethColor)
-                .shadow(color: gearTeethColor.opacity(0.5), radius: 8, x: 0, y: 0)
-                .zIndex(1) // 确保数字在最上层
+                .foregroundColor(numberColor)  // 修改为红色
+                .shadow(color: numberColor.opacity(0.5), radius: 8, x: 0, y: 0)
+                .zIndex(1)
             
             // 重置按钮（长按）
             .onLongPressGesture(minimumDuration: 1.0) {
@@ -168,44 +118,44 @@ struct GearDialView: View {
         let outerX = center.x + CGFloat(outerRadius * cos(radian))
         let outerY = center.y + CGFloat(outerRadius * sin(radian))
         
-        // 主刻度线 - 白色
+        // 主刻度线 - 深灰色
         Path { path in
             path.move(to: CGPoint(x: innerX, y: innerY))
             path.addLine(to: CGPoint(x: outerX, y: outerY))
         }
-        .stroke(whiteTickColor, lineWidth: 2)
+        .stroke(tickColor, lineWidth: 2)  // 修改为深灰色
         .rotationEffect(.degrees(0))
     }
     
-    // 次要刻度线（每15度一个）- 白色（稍暗）
+    // 次要刻度线（每15度一个）- 深灰色（稍暗）
     @ViewBuilder
-    private func makeMinorTick(index: Int) -> some View {
-        let angle = Double(index) * 15
-        // 跳过主刻度位置
-        if angle.truncatingRemainder(dividingBy: 30) != 0 {
-            let radian = angle * Double.pi / 180
-            let center = CGPoint(x: size / 2, y: size / 2)
-            
-            // 计算内圈和外圈的位置
-            let innerRadius = size / 2 - 20
-            let outerRadius = size / 2 - 14
-            
-            let innerX = center.x + CGFloat(innerRadius * cos(radian))
-            let innerY = center.y + CGFloat(innerRadius * sin(radian))
-            let outerX = center.x + CGFloat(outerRadius * cos(radian))
-            let outerY = center.y + CGFloat(outerRadius * sin(radian))
-            
-            // 次要刻度线 - 白色稍暗
-            Path { path in
-                path.move(to: CGPoint(x: innerX, y: innerY))
-                path.addLine(to: CGPoint(x: outerX, y: outerY))
-            }
-            .stroke(whiteTickColorDim, lineWidth: 1)
-            .rotationEffect(.degrees(0))
-        }
-    }
+       private func makeMinorTick(index: Int) -> some View {
+           let angle = Double(index) * 15
+           // 跳过主刻度位置
+           if angle.truncatingRemainder(dividingBy: 30) != 0 {
+               let radian = angle * Double.pi / 180
+               let center = CGPoint(x: size / 2, y: size / 2)
+               
+               // 计算内圈和外圈的位置
+               let innerRadius = size / 2 - 20
+               let outerRadius = size / 2 - 14
+               
+               let innerX = center.x + CGFloat(innerRadius * cos(radian))
+               let innerY = center.y + CGFloat(innerRadius * sin(radian))
+               let outerX = center.x + CGFloat(outerRadius * cos(radian))
+               let outerY = center.y + CGFloat(outerRadius * sin(radian))
+               
+               // 次要刻度线 - 深灰色稍暗
+               Path { path in
+                   path.move(to: CGPoint(x: innerX, y: innerY))
+                   path.addLine(to: CGPoint(x: outerX, y: outerY))
+               }
+               .stroke(tickColorDim, lineWidth: 1)  // 修改为深灰色稍暗
+               .rotationEffect(.degrees(0))
+           }
+       }
     
-    // 小时标签（显示为时钟数字：3, 6, 9, 12）- 移动到最外圈
+    // 小时标签（显示为时钟数字：3, 6, 9, 12）- 移动到最外圈，修改为红色
     private func makeHourText(hour: Int) -> some View {
         let angle: Double
         let label: String
@@ -230,7 +180,7 @@ struct GearDialView: View {
         
         let radian = angle * Double.pi / 180
         let center = CGPoint(x: size / 2, y: size / 2)
-        let labelRadius = size / 2 - 5  // 移动到最外圈，紧贴边缘
+        let labelRadius = size / 2 - 3  // 移动到最外圈，紧贴边缘
         
         let labelX = center.x + CGFloat(labelRadius * cos(radian))
         let labelY = center.y + CGFloat(labelRadius * sin(radian))
@@ -238,7 +188,7 @@ struct GearDialView: View {
         return AnyView(
             Text(label)
                 .font(.system(size: 14, weight: .bold, design: .monospaced))
-                .foregroundColor(whiteTickColor)
+                .foregroundColor(numberColor)  // 修改为红色
                 .position(x: labelX, y: labelY)
         )
     }

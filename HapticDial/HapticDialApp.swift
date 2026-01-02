@@ -1,5 +1,6 @@
 // HapticDial/HapticDialApp.swift
 import SwiftUI
+import Combine
 
 @main
 struct HapticDialApp: App {

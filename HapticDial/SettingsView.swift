@@ -8,15 +8,150 @@ struct SettingsView: View {
     @ObservedObject var bubbleViewModel: BubbleDialViewModel
     @ObservedObject var gearViewModel: GearDialViewModel
     @ObservedObject private var hapticManager = HapticManager.shared
+    @ObservedObject private var effectManager = EffectManager.shared
     
     // 颜色定义
     private let orangePinkColor = Color(red: 1.0, green: 0.4, blue: 0.3)
     private let bubbleColor = Color(red: 0.2, green: 0.8, blue: 1.0)
     private let gearColor = Color(red: 1.0, green: 0.4, blue: 0.2)
+    private let fireworksColor = Color(red: 1.0, green: 0.6, blue: 0.2)
+    private let crackColor = Color(red: 0.2, green: 0.8, blue: 1.0)
     
     var body: some View {
         NavigationView {
             List {
+                // 特殊效果设置
+                Section {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("SPECIAL EFFECT")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.7))
+                            .tracking(1)
+                            .padding(.bottom, 4)
+                        
+                        // 效果模式选择器
+                        HStack(spacing: 12) {
+                            // 烟火效果选项
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    effectManager.setEffectMode("fireworks")
+                                }
+                                hapticManager.playClick()
+                            }) {
+                                VStack(spacing: 10) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(effectManager.currentEffectMode == "fireworks" ?
+                                                  fireworksColor.opacity(0.15) :
+                                                  Color.white.opacity(0.05))
+                                            .frame(width: 60, height: 60)
+                                        
+                                        Image(systemName: "sparkles")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(effectManager.currentEffectMode == "fireworks" ?
+                                                           fireworksColor :
+                                                           .white.opacity(0.5))
+                                    }
+                                    
+                                    Text("Fireworks")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(effectManager.currentEffectMode == "fireworks" ?
+                                                       fireworksColor :
+                                                       .white.opacity(0.6))
+                                    
+                                    if effectManager.currentEffectMode == "fireworks" {
+                                        Circle()
+                                            .fill(fireworksColor)
+                                            .frame(width: 6, height: 6)
+                                            .padding(.top, 2)
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Spacer()
+                            
+                            // 玻璃破裂效果选项
+                            Button(action: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    effectManager.setEffectMode("crack")
+                                }
+                                hapticManager.playClick()
+                            }) {
+                                VStack(spacing: 10) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(effectManager.currentEffectMode == "crack" ?
+                                                  crackColor.opacity(0.15) :
+                                                  Color.white.opacity(0.05))
+                                            .frame(width: 60, height: 60)
+                                        
+                                        Image(systemName: "burst")
+                                            .font(.system(size: 24))
+                                            .foregroundColor(effectManager.currentEffectMode == "crack" ?
+                                                           crackColor :
+                                                           .white.opacity(0.5))
+                                    }
+                                    
+                                    Text("Glass Crack")
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(effectManager.currentEffectMode == "crack" ?
+                                                       crackColor :
+                                                       .white.opacity(0.6))
+                                    
+                                    if effectManager.currentEffectMode == "crack" {
+                                        Circle()
+                                            .fill(crackColor)
+                                            .frame(width: 6, height: 6)
+                                            .padding(.top, 2)
+                                    }
+                                }
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+                        .padding(.vertical, 8)
+                        
+                        // 当前模式描述
+                        Text(effectManager.currentEffectDescription)
+                            .font(.system(size: 14, weight: .regular, design: .rounded))
+                            .foregroundColor(.white.opacity(0.5))
+                            .padding(.top, 8)
+                        
+                        // 测试按钮
+                        Button(action: {
+                            print("🎯 测试效果，当前模式: \(effectManager.currentEffectMode)")
+                            effectManager.triggerEffect()
+                            hapticManager.playClick()
+                        }) {
+                            HStack {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 14))
+                                Text("Test Effect")
+                                    .font(.system(size: 15, weight: .medium))
+                            }
+                            .foregroundColor(effectManager.currentEffectMode == "fireworks" ?
+                                           fireworksColor :
+                                           crackColor)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(
+                                Capsule()
+                                    .fill((effectManager.currentEffectMode == "fireworks" ?
+                                           fireworksColor :
+                                           crackColor).opacity(0.1))
+                            )
+                        }
+                        .padding(.top, 12)
+                    }
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Special Effects")
+                } footer: {
+                    Text("Choose what happens when you reach 100 taps or 100 rotations")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                
                 Section {
                     Toggle("Haptic Feedback", isOn: $viewModel.hapticEnabled)
                         .toggleStyle(SwitchToggleStyle(tint: orangePinkColor))
@@ -130,6 +265,15 @@ struct SettingsView: View {
                         Text("1.0")
                             .foregroundColor(.secondary)
                     }
+                    
+                    HStack {
+                        Text("Build")
+                        Spacer()
+                        Text("1001")
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("About")
                 }
             }
             .navigationTitle("Settings")

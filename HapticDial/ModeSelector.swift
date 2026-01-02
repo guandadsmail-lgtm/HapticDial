@@ -1,6 +1,7 @@
 // Views/ModeSelector.swift
 import SwiftUI
 import CoreGraphics
+import Combine
 
 struct ModeSelector: View {
     @Binding var selectedMode: DialMode

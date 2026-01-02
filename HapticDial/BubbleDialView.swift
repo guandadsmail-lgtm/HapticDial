@@ -1,5 +1,6 @@
 // Views/BubbleDialView.swift
 import SwiftUI
+import Combine
 
 struct BubbleDialView: View {
     @ObservedObject var viewModel: BubbleDialViewModel
@@ -41,8 +42,8 @@ struct BubbleDialView: View {
                 .fill(
                     RadialGradient(
                         gradient: Gradient(colors: [
-                            Color(red: 0.08, green: 0.12, blue: 0.25),  // 比主背景稍亮
-                            Color(red: 0.04, green: 0.06, blue: 0.15)   // 深蓝色
+                            Color(red: 0.35, green: 0.85, blue: 0.95, opacity: 0.4),  // 60%透明
+                            Color(red: 0.2, green: 0.6, blue: 0.8, opacity: 0.3)      // 60%透明
                         ]),
                         center: .center,
                         startRadius: 0,
@@ -229,9 +230,9 @@ struct BubbleDialView: View {
         )
     }
     
+    // 在 BubbleDialView.swift 中找到这个函数并修改：
+
     private func updateParticles(count: Int) {
-        let center = CGPoint(x: size / 2, y: size / 2)
-        
         // 确保粒子数量等于点击次数
         if count > particlePositions.count {
             // 需要添加更多粒子
