@@ -86,11 +86,11 @@ class EffectManager: ObservableObject {
     var currentEffectDescription: String {
         switch currentEffectMode {
         case "crack":
-            return "达到100次时将触发全屏玻璃破裂效果"
+            return "Trigger full-screen glass crack effect when reaching 100 times"
         case "fireworks":
-            return "达到100次时将触发烟火效果"
+            return "Trigger fireworks effect when reaching 100 times"
         default:
-            return "达到100次时将触发烟火效果"
+            return "Trigger fireworks effect when reaching 100 times"
         }
     }
     

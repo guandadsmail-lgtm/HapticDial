@@ -30,11 +30,9 @@ class BubbleDialViewModel: ObservableObject {
     }
     
     private func checkForEffect() {
-        // 每当达到100或100的整数倍时触发效果
+        // When reaching 100 or multiples of 100, trigger the effect
         if tapCount >= 100 && tapCount % 100 == 0 && tapCount > lastEffectCount {
             lastEffectCount = tapCount
-            
-            // 使用全局效果管理器来触发效果
             EffectManager.shared.triggerEffect()
         }
     }

@@ -17,7 +17,7 @@ class GearDialViewModel: ObservableObject {
         isSpinning = true
         spinCount += 1
         
-        // 检查是否需要触发特殊效果
+        // Check if special effect should be triggered
         checkForEffect()
         
         HapticManager.shared.playClick()
@@ -26,7 +26,7 @@ class GearDialViewModel: ObservableObject {
             rotationAngle += 360
         }
         
-        // 添加多个触觉反馈，模拟齿轮转动
+        // Add multiple haptic feedback to simulate gear rotation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             HapticManager.shared.playClick(velocity: 0.6)
         }
@@ -49,11 +49,11 @@ class GearDialViewModel: ObservableObject {
     }
     
     private func checkForEffect() {
-        // 每当达到100或100的整数倍时触发效果
+        // Trigger effect when reaching 100 or multiples of 100
         if spinCount >= 100 && spinCount % 100 == 0 && spinCount > lastEffectCount {
             lastEffectCount = spinCount
             
-            // 使用全局效果管理器来触发效果
+            // Use global effect manager to trigger effect
             EffectManager.shared.triggerEffect()
         }
     }
