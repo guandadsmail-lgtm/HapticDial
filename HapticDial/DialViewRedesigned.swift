@@ -82,7 +82,7 @@ struct DialViewRedesigned: View {
                 CenterWithTicks(center: center, innerRadius: innerRadius, currentAngle: viewModel.currentAngle,
                                 fluorescentColor: fluorescentColor)
                 
-                // 当前角度显示在中心
+                // 在 CenterWithTicks 结构体中，找到中心数字显示部分：
                 VStack(spacing: 5) {
                     Text("\(Int(viewModel.currentAngle.rounded()))°")
                         .font(.system(size: 26, weight: .semibold, design: .rounded))
@@ -106,6 +106,7 @@ struct DialViewRedesigned: View {
                     }
                     .padding(.top, 5)
                 }
+                .zIndex(10)  // 确保数字在最上层显示
                 
                 // 指示器（光标）- 使用气泡蓝到齿轮红的渐变
                 Indicator(outerRadius: outerRadius, currentAngle: viewModel.currentAngle,
@@ -432,39 +433,172 @@ struct Indicator: View {
     let currentAngle: Double
     let bubbleBlue: Color
     let gearRed: Color
+    let centerRadius: CGFloat = 40
     
     var body: some View {
         ZStack {
-            // 指示器光标 - 使用气泡蓝到齿轮红的渐变
-            Capsule()
+            // 1. 中心红色圆盘底座
+            RedDialBase(centerRadius: centerRadius, gearRed: gearRed)
+            
+            // 2. 延伸的指针（从粗到细）
+            ExtendedPointer(
+                outerRadius: outerRadius,
+                currentAngle: currentAngle,
+                bubbleBlue: bubbleBlue,
+                gearRed: gearRed,
+                centerRadius: centerRadius
+            )
+        }
+    }
+}
+
+// 红色圆盘底座子视图
+struct RedDialBase: View {
+    let centerRadius: CGFloat
+    let gearRed: Color
+    
+    var body: some View {
+        ZStack {
+            // 红色圆盘（没有白色边框）
+            Circle()
                 .fill(
-                    LinearGradient(
+                    RadialGradient(
                         gradient: Gradient(colors: [
-                            bubbleBlue,
-                            gearRed
+                            gearRed.opacity(0.3),
+                            gearRed.opacity(0.2),
+                            gearRed.opacity(0.1)
                         ]),
-                        startPoint: .top,
-                        endPoint: .bottom
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: centerRadius
                     )
                 )
-                .frame(width: 5, height: 55)
-                .offset(y: -outerRadius)
-                .rotationEffect(.degrees(currentAngle))
-                .shadow(color: bubbleBlue.opacity(0.6), radius: 12, x: 0, y: 0)
+                .frame(width: centerRadius * 2, height: centerRadius * 2)
+                .shadow(color: gearRed.opacity(0.1), radius: 8, x: 0, y: 0)
             
-            // 光标顶端圆点 - 气泡蓝色
-            Circle()
-                .fill(bubbleBlue)
-                .frame(width: 12, height: 12)
-                .offset(y: -outerRadius)
-                .rotationEffect(.degrees(currentAngle))
-                .shadow(color: bubbleBlue.opacity(0.9), radius: 6, x: 0, y: 0)
+            // 刻度线 - 修复为垂直圆盘
+            DialBaseTicks(centerRadius: centerRadius)
+        }
+    }
+}
+
+// 刻度线子视图 - 修复为径向排列
+struct DialBaseTicks: View {
+    let centerRadius: CGFloat
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
             
-            // 光标底部装饰 - 齿轮红色
+            ForEach(0..<12, id: \.self) { index in
+                let angle = Double(index) * 30
+                let radian = angle * .pi / 180
+                
+                // 计算刻度线的起点和终点（径向）
+                let innerX = center.x + CGFloat((centerRadius - 4) * cos(radian))
+                let innerY = center.y + CGFloat((centerRadius - 4) * sin(radian))
+                let outerX = center.x + CGFloat((centerRadius + 4) * cos(radian))
+                let outerY = center.y + CGFloat((centerRadius + 4) * sin(radian))
+                
+                Path { path in
+                    path.move(to: CGPoint(x: innerX, y: innerY))
+                    path.addLine(to: CGPoint(x: outerX, y: outerY))
+                }
+                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+            }
+        }
+        .frame(width: centerRadius * 2, height: centerRadius * 2)
+    }
+}
+
+// 延伸指针子视图 - 修复指针方向
+struct ExtendedPointer: View {
+    let outerRadius: CGFloat
+    let currentAngle: Double
+    let bubbleBlue: Color
+    let gearRed: Color
+    let centerRadius: CGFloat
+    
+    // 计算指针的长度
+    private var pointerLength: CGFloat {
+        return outerRadius - centerRadius + 15
+    }
+    
+    var body: some View {
+        ZStack {
+            // 指针阴影层
+            Capsule()
+                .fill(Color.black.opacity(0.3))
+                .frame(width: 6, height: pointerLength)
+                .offset(y: -centerRadius - (pointerLength / 2))
+                .rotationEffect(.degrees(currentAngle))
+                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
+            
+            // 主指针 - 粗端（红色）靠近中心，尖端（蓝色）远离中心
+            ZStack {
+                // 靠近中心的粗端（红色）- 内侧
+                Capsule()
+                    .fill(gearRed)
+                    .frame(width: 8, height: pointerLength * 0.4)
+                    .offset(y: -centerRadius - (pointerLength * 0.2))
+                    .rotationEffect(.degrees(currentAngle))
+                
+                // 中间过渡部分 - 从红色过渡到蓝色
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [gearRed, bubbleBlue]),
+                            startPoint: .bottom,  // 底部（靠近中心）是红色
+                            endPoint: .top       // 顶部（远离中心）是蓝色
+                        )
+                    )
+                    .frame(width: 4, height: pointerLength * 0.4)
+                    .offset(y: -centerRadius - (pointerLength * 0.6))
+                    .rotationEffect(.degrees(currentAngle))
+                
+                // 尖端较细部分（蓝色）- 外侧
+                Capsule()
+                    .fill(bubbleBlue)
+                    .frame(width: 3, height: pointerLength * 0.4)
+                    .offset(y: -centerRadius - (pointerLength * 1.0))
+                    .rotationEffect(.degrees(currentAngle))
+            }
+            .shadow(color: bubbleBlue.opacity(0.4), radius: 4, x: 0, y: 0)
+            
+            // 指针顶端圆点（在最外侧）
             Circle()
-                .fill(gearRed.opacity(0.7))
-                .frame(width: 8, height: 8)
-                .offset(y: -outerRadius + 30)
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            bubbleBlue,
+                            bubbleBlue.opacity(0.7),
+                            .clear
+                        ]),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 6
+                    )
+                )
+                .frame(width: 14, height: 14)
+                .offset(y: -centerRadius - pointerLength)
+                .rotationEffect(.degrees(currentAngle))
+                .shadow(color: bubbleBlue.opacity(0.8), radius: 4, x: 0, y: 0)
+            
+            // 指针底部连接点（在红色圆盘边缘）
+            Circle()
+                .fill(
+                    RadialGradient(
+                        gradient: Gradient(colors: [
+                            gearRed,
+                            gearRed.opacity(0.8)
+                        ]),
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 7
+                    )
+                )
+                .frame(width: 16, height: 16)
+                .offset(y: -centerRadius)
                 .rotationEffect(.degrees(currentAngle))
                 .shadow(color: gearRed.opacity(0.5), radius: 3, x: 0, y: 0)
         }
